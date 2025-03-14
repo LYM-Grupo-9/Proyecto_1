@@ -15,7 +15,7 @@ options
   
 	LOOKAHEAD=1; 
 	IGNORE_CASE=true;
-	STATIC = false;
+	STATIC = true;
 	
 }
    
@@ -31,6 +31,7 @@ import java.awt.Point;
 import java.io.*;
 import java.util.Vector;
 import java.util.LinkedList;
+import java.util.* ;
 
 @SuppressWarnings("serial")
 public class Robot 
@@ -45,15 +46,50 @@ public class Robot
 	}
 
 	String salida=new String();
+
+	public static void main(String args []) throws ParseException
+  {
+    Robot parser = new Robot(System.in);
+    while (true)
+    {
+      System.out.println("Reading from standard input...");
+      System.out.print("Ingrese un código para el robot:");
+      try
+      {
+        switch (Robot.one_line())
+        {
+          case 0 : 
+          System.out.println("OK.");
+          break;
+          case 1:
+          System.out.println("Debe ingresar un correo válido.");
+          default : 
+          break;
+        }
+      }
+      catch (Exception e)
+      {
+        System.out.println("NOK. Ingrese un correo valido");
+        System.out.println(e.getMessage());
+        Robot.ReInit(System.in);
+      }
+      catch (Error e)
+      {
+        System.out.println("Oops.");
+        System.out.println(e.getMessage());
+        break;
+      }
+    }
+  }
 }
 PARSER_END(Robot)
 
-SKIP:
+SKIP :
 {
-	" "
-	|	"\r"
-	|	"\t"
-	| "\n"
+  " "
+| "\r"
+| "\t"
+| "\n"
 }
 
 TOKEN: /* Instrucciones */
@@ -64,7 +100,7 @@ TOKEN: /* Instrucciones */
 		| <PUT: "put:">
 		| <PICK: "pick:">
 		| < POP: "Pop" >
-		| <GO: "GO" >
+		| <GOTO: "goto:" >
         | < HOP:  "HOP" >
         | < NOP : "nop." >
         | < JUMP : "jump:" >
@@ -73,7 +109,8 @@ TOKEN: /* Instrucciones */
         | < WITH : "with:" >
         | < TOTHE : "toThe:" >
 		| < INDIR : "inDir:" >
-		| < TYPE : "ofType" >
+		| < TYPE : "ofType:" >
+		| < PROC : "proc" >
 		
 
 }
@@ -91,13 +128,21 @@ TOKEN: /* Condicionales */
 
 }
 
-
-TOKEN: /* constantes */
+TOKEN :
 {
-	 < DT : "#left" | "#right" | "#around" >
+  		< WHILE : "while:" >
+  		| < DO: "do:" >
+  		| < FOR : "for:" >
+  		| < REPEAT : "repeat:" >
+}
+
+TOKEN: /* constants*/
+{
+	 < DT : "#around" >
   	| < O : "#north" | "#south" | "#east" | "#west" >
   	| < X : "#balloons" | "#chips" >
-  	| < D : "#left" | "#right" | "#front" | "#back" >
+  	| < D :  "#front" | "#back" >
+  	| < LR : "#left" | "#right" >
 }
 
 
@@ -109,12 +154,260 @@ TOKEN :
 		| <#LETTERUPPER : ["A" - "Z"] >
 		| <#LETTERLOWER : ["a" - "z"] >
 		| < VAR : <LETTERLOWER > (< LETTERLOWER >|< LETTERUPPER >|< NUM >)* >
-		| < VARNUM: (< VAR > | < NUM >) >  
         
 }
 
+int one_line() :
+{
+  Set<String > vars = new HashSet< >();
+  Set<String > procedures = new HashSet< >();
+  }
+{
+  (decVar(vars))? (procedure(vars, procedures) | completeBlock()) + ";"
+  {
+    return 0;
+  }
+| ";"
+  {
+    return 1;
+  }
+}
 
+void varNum():
+{
+}
+{
+	< VAR > | < NUM >
+}
+void mov():
+	{
+    }
+    {
+      < MOVE > varNum() (< TOTHE > (< D > | < LR >) | < INDIR > < O >)? "."
+    }
 
+	void goTo():
+	{
+	}
+
+	{
+	  < GOTO > varNum() <WITH > varNum() "."
+	}
+
+	void turn ():
+	{
+	}
+	{
+	  < TURN > (< DT > | < LR >)  "."
+	}
+
+	void face ():
+	{
+	}
+	{
+	  < FACE >< O > "."
+	}
+
+	void put () :
+	{
+	}
+	{
+	  < PUT > varNum() <TYPE > <X > "."
+	}
+
+	void pick ():
+	{
+	}
+	{
+	  < PICK > varNum() < TYPE > < X > "."
+	}
+
+	void jump ():
+	{
+	}
+	{
+	  < JUMP > varNum() (< INDIR > < O >| < TOTHE > (< D > | < LR >) ) "."
+	}
+
+	void nop ():
+	{
+	}
+	{
+	  < NOP >
+	}
+
+	void instruction () :
+	{
+	}
+	{
+	  mov() |
+	  goTo()|
+	  turn()|
+	  face()|
+	  put()|
+	  pick()|
+	  jump()|
+	  nop()
+	}
+
+	void facing() :
+	{
+	}
+	{
+	  < FACING > < O > "."
+	}
+
+	void canPut():
+	{
+	}
+	{
+	  < CANPUT > varNum() < TYPE > < X > "."
+	}
+
+	void canPick():
+	{
+	}
+	{
+	  < CANPICK > varNum() < TYPE > < X > "."
+	}
+
+	void canMove() :
+	{
+	    Token varNum, direction;
+	}
+	{
+	    <CANMOVE> varNum() ( <INDIR> direction=<O> | <TOTHE> (< D > | < LR >)  ) "."
+	}
+	
+	void canJump() :
+	{
+	    Token varNum, direction;
+	}
+	{
+	    <CANJUMP> varNum() ( <INDIR> direction=<O> | <TOTHE> (< D > | < LR >)  ) "."
+	}
+	
+	// Condición genérica
+	void initialCondition() :
+	{}
+	{
+	    facing() | canPut() | canPick() | canMove() | canJump() 
+	}
+	
+	// Definición de la negación de una condición
+	void not() :
+	{}
+	{
+	    <NOT> initialCondition() "."
+	}
+
+	void completeCondition() :
+	{
+	}
+
+	{
+	  initialCondition () |
+	  not()
+	}
+
+	void decVar(Set<String > vars) :
+	{
+	    Token varName;
+	}
+	{
+	    "|" varName=<VAR> ( varName=<VAR> )* "|"
+	}
+	
+	// Asignación de variables: var := var_num.
+	void assignVar() :
+	{
+	    Token varName, value;
+	}
+	{
+	    varName=<VAR> ":=" varNum() "."
+	}
+	
+	// Llamada a procedimientos: var(:var_num(and:var_num)*)?.
+	void procCall() :
+	{
+	    Token procName, param;
+	}
+	{
+	    procName=<VAR> ( ":" varNum() ( "and:" varNum() )* )? "."
+	}
+
+	void basicBlock():
+	{
+	}
+	{
+	  (
+	    LOOKAHEAD(100)
+	    assignVar()|
+	    procCall()|
+	  	completeCondition()|
+	  	instruction()
+	  	
+	  )+
+	}
+	
+	
+	void terminalLoop():
+	{
+	}
+	{
+	  < WHILE > completeCondition() < DO > basicBlock()
+	}
+	
+	void terminalRepeat():
+	{
+	}
+	{
+	  < FOR > varNum() < REPEAT > basicBlock()
+	}
+	
+	
+	void completeBlock():
+	{
+	}
+	{
+	  "["(
+	    basicBlock() |
+	    completeLoop() |
+	    completeRepeat()
+	  )+ "]"
+	}
+	
+	
+	void completeLoop():
+	{
+	}
+	{
+	  < WHILE > completeCondition() < DO > completeBlock()
+	}
+	
+	
+	void completeRepeat():
+	{
+	}
+	{
+	  < FOR > varNum() < REPEAT > completeBlock()
+	}
+
+	void procHeading(Set<String > procedures):
+	{
+	}
+	{
+	  < PROC > < VAR > { procedures.add(token.image); } (":" < VAR > ("and:" < VAR >)* )?
+	}
+
+	void procedure(Set<String > vars, Set<String > procedures):
+	{
+	}
+	{
+	  procHeading(procedures) "[" (decVar(vars))? completeBlock() "]"
+	}
+
+	/*
 	//boolean command(uniandes.lym.robot.view.Console sistema) :
 	boolean command(Console sistema):
 	{	
@@ -149,6 +442,7 @@ TOKEN :
     	| <EOF> {return false;} 
 	}
 
+	
 	void put() :
 	{
 		int f=1;	
@@ -168,9 +462,16 @@ TOKEN :
 		|  	  ( <BALLOONS>   "," f=num() {world.grabBalloons(f);salida="Command:  Pick balloons";})	 
 
 	}
+	*/
 
-	
-	
+
+
+
+	   
+	  	
+	  	
+	  
+
 
 	/**
 	 * Unsigned decimal number
