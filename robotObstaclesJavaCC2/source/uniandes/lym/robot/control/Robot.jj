@@ -359,7 +359,19 @@ void mov(Map<String, Integer > vars, Map<String, Integer > localVars, boolean is
 	   }
 	 }
 	       
-	        ":=" varNum(vars, localVars, isProc) "."
+	        ":=" value = < NUM >
+	        { if(!isProc) {
+	          vars.put(varName.image, Integer.parseInt(value.image)); }
+		      else {
+		          if (vars.containsKey(varName.image) && !localVars.containsKey(varName.image)) {
+		            vars.replace(varName.image, Integer.parseInt(value.image)); 
+				}
+				else {
+				  localVars.replace(varName.image, Integer.parseInt(value.image));
+		        	}
+	     	}
+	   } 
+	        "."
 	}
 	
 	// Llamada a procedimientos: var(:var_num(and:var_num)*)?.
@@ -447,7 +459,7 @@ void mov(Map<String, Integer > vars, Map<String, Integer > localVars, boolean is
 
 
 	//Procedimientos
-	void procHeading(Map<String, Integer > procedures, Map<String, Integer > localVars) :
+	void procHeading(Map<String, Integer > procedures) :
 	{
 	  Token procName;
 	  Integer valActual;
@@ -456,11 +468,11 @@ void mov(Map<String, Integer > vars, Map<String, Integer > localVars, boolean is
 	  < PROC > procName=< VAR > { procedures.put(token.image, 0 ); }
 
 	  (":" < VAR >
-	  {	localVars.put(token.image, null);
+	  {	
 	    valActual = procedures.get(procName.image);
 	   procedures.replace(procName.image, valActual + 1); }
 	  ("and:" < VAR >
-	  {	localVars.put(token.image, null);
+	  {
 	    valActual = procedures.get(procName.image);
 	   procedures.replace(procName.image, valActual + 1); })* )?
 	}
@@ -470,7 +482,7 @@ void mov(Map<String, Integer > vars, Map<String, Integer > localVars, boolean is
 	  Map<String, Integer > localVars = new HashMap< >();
 	}
 	{
-	  procHeading(procedures, localVars) "[" (decVar(localVars))? completeBlockContent(vars, localVars, true, procedures) "]"
+	  procHeading(procedures) "[" (decVar(localVars))? completeBlockContent(vars, localVars, true, procedures) "]"
 	}
 
 	/*
