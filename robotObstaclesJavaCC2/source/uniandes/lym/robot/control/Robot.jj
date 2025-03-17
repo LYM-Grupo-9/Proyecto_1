@@ -322,23 +322,64 @@ void mov(Map<String, Integer > vars, Map<String, Integer > localVars, boolean is
 
 	void put (Map<String, Integer > vars, Map<String, Integer > localVars, boolean isProc) throws Exception :
 	{
+	  int x = 0;
+	  Token tipo = new Token();
 	}
 	{
-	  < PUT > varNum(vars, localVars, isProc) <TYPE > <X > "."
+	  < PUT > x = varNum(vars, localVars, isProc) tipo = <TYPE > <X > "." {
+	  if tipo.image.equals("#ballons") {
+	    try {
+	    kernel.putBallons();	    
+		for(int i=0; i < x; i++) {
+		  world.putBalloon();
+	    }
+	    catch (Error e) { }
+	  }
+	} else {
+	  try {
+	  kernel.putChips() 
+	  for(int i=0; i < x; i++) {
+		  world.putChip(); }
+		  catch (Error e) { }
 	}
+	}
+}
 
 	void pick (Map<String, Integer > vars, Map<String, Integer > localVars, boolean isProc) throws Exception:
 	{
+	  int x = 0;
+	  Token tipo = new Token();
 	}
 	{
-	  < PICK > varNum(vars, localVars, isProc) < TYPE > < X > "."
+	  < PICK > x = varNum(vars, localVars, isProc) tipo = < TYPE > < X > "." {
+	  if tipo.image.equals("#ballons") {
+	    try {
+	    kernel.grabBallons();	    
+		for(int i=0; i < x; i++) {
+		  world.pickupBalloon();
+	    }
+	    catch (Error e) { }
+	  }
+	} else {
+	  try {
+	  kernel.pickChips();
+	  for(int i=0; i < x; i++) {
+		  world.pickupChip(); }
+		  catch (Error e) { }
+	}
+	}
+}
 	}
 
 	void jump (Map<String, Integer > vars, Map<String, Integer > localVars, boolean isProc) throws Exception:
 	{
+	  int x = 0;
+	  
 	}
 	{
-	  < JUMP > varNum(vars, localVars, isProc) (< INDIR > < O >| < TOTHE > (< D > | < LR >) ) "."
+	  < JUMP > x = varNum(vars, localVars, isProc) (dir = < INDIR > val = < O >| dir = < TOTHE > val = (< D > | < LR >) ) "."
+	  { 
+	    }
 	}
 
 	void nop ():
