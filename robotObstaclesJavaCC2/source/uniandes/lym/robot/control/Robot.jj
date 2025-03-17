@@ -15,7 +15,7 @@ options
   
 	LOOKAHEAD=1; 
 	IGNORE_CASE=true;
-	STATIC = true;
+	STATIC = false;
 	
 }
    
@@ -47,6 +47,7 @@ public class Robot
 
 	String salida=new String();
 
+	/*
 	public static void main(String args []) throws ParseException
   {
     Robot parser = new Robot(System.in);
@@ -62,14 +63,14 @@ public class Robot
           System.out.println("OK.");
           break;
           case 1:
-          System.out.println("Debe ingresar un correo válido.");
+          System.out.println("Debe ingresar un código no vacío.");
           default : 
           break;
         }
       }
       catch (Exception e)
       {
-        System.out.println("NOK. Ingrese un correo valido");
+        System.out.println("NOK. Ingrese un código valido");
         System.out.println(e.getMessage());
         Robot.ReInit(System.in);
       }
@@ -81,6 +82,7 @@ public class Robot
       }
     }
   }
+  */
 }
 PARSER_END(Robot)
 
@@ -166,7 +168,7 @@ int one_line() throws Exception:
 {
   (decVar(vars))? (procedure(vars, procedures) | completeBlock(vars, localVars, false, procedures)) + ";"
   {
-    System.out.println(vars);
+    
     return 0;
   }
 | ";"
@@ -175,7 +177,36 @@ int one_line() throws Exception:
   }
 }
 
-void varNum(Map<String, Integer > vars, Map<String, Integer > localVars, boolean isProc) throws Exception:
+//boolean command(uniandes.lym.robot.view.Console sistema) :
+ 	boolean  command(Console sistema) throws Exception:
+	{	
+		
+		int x,y;
+		salida=new String();
+		Map<String, Integer > vars = new HashMap< >();
+  		Map<String, Integer > procedures = new HashMap< >();
+ 		Map<String, Integer > localVars = new HashMap< >();
+	}
+	{
+	  (decVar(vars))? (procedure(vars, procedures) | completeBlock(vars, localVars, false, procedures)) + ";"
+
+	  {
+		    try {
+	    			 Thread.sleep(900);
+	    	    } catch (InterruptedException e) {
+	    			        System.err.format("IOException: %s%n", e);
+	    		    }
+	    			 
+			sistema.printOutput(salida);
+			return true;
+		}
+
+    	| <EOF> {return false;} 
+	}
+	  
+  
+
+int varNum(Map<String, Integer > vars, Map<String, Integer > localVars, boolean isProc) throws Exception:
 {
 }
 {
@@ -184,6 +215,7 @@ void varNum(Map<String, Integer > vars, Map<String, Integer > localVars, boolean
 	  if (!vars.containsKey(token.image) && !localVars.containsKey(token.image)) {
 	    throw new Exception("Variable no declarada");
 	  }
+	  return 0;
 	}
 	else {
 	  if(!vars.containsKey(token.image)) {
@@ -192,17 +224,79 @@ void varNum(Map<String, Integer > vars, Map<String, Integer > localVars, boolean
 	  if(vars.get(token.image) == null) {
 	    throw new Exception("Variable no asignada");
 	  }
-	  //return (vars.get(token.image));
+
+	  return vars.get(token.image);
 	}
 	}
-	| < NUM > //{ return Integer.parseInt(token.image); }
+	| < NUM > { return Integer.parseInt(token.image); }
 }
 void mov(Map<String, Integer > vars, Map<String, Integer > localVars, boolean isProc) throws Exception:
 	{
-    }
+	  int x = 0;
+	  Token action = new Token();
+	  Token dir = new Token();
+}
     {
-      < MOVE > varNum(vars, localVars, isProc) (< TOTHE > (< D > | < LR >) | < INDIR > < O >)? "."
+      < MOVE > x=varNum(vars, localVars, isProc) (action = < TOTHE > (dir = < D > |dir = < LR >) |action = < INDIR > dir = < O >)? "."
+      { if (action.kind == TOTHE) {
+        if (dir.kind == D) {
+          for(int i = 0; i < x; i++) {
+            if(dir.image.equals("#front")) { 
+            	world.up();
+           }
+           else { world.down(); }
+    		}
+   		}
+    	else {
+    	  for(int i = 0; i< x; i++) {
+            if(dir.image.equals("#left")) { 
+            	world.left();
+           }
+           else { world.right(); }
+    		}
     }
+  }
+    	 
+    	else {
+    	  for(int i = 0; i< x; i++) {
+            if(dir.image.equals("#north")) { 
+            	world.up();
+           }
+           else if (dir.image.equals("#south"))
+             { world.down(); }
+    		
+    		else if (dir.image.equals("#east"))
+             { world.left(); }
+    		
+    		else 
+    		  { world.right(); }
+    		
+    		}
+    		if(dir.image.equals("#north")) { 
+            	while (!world.facingNorth()) {
+            	  world.turnRight();
+            	}
+           }
+           else if (dir.image.equals("#south"))
+             { while (!world.facingSouth()) {
+            	  world.turnRight();
+            	}}
+    		
+    		else if (dir.image.equals("#east"))
+             { while (!world.facingEast()) {
+            	  world.turnRight();
+            	} }
+    		
+    		else {
+    		  { while (!world.facingNorth()) {
+            	  world.turnRight();
+            	} }
+    		}
+  }
+}
+}
+         
+    
 
 	void goTo(Map<String, Integer > vars, Map<String, Integer > localVars, boolean isProc) throws Exception:
 	{
@@ -262,6 +356,8 @@ void mov(Map<String, Integer > vars, Map<String, Integer > localVars, boolean is
 	  goTo(vars, localVars, isProc)|
 	  turn()|
 	  face()|
+
+	  
 	  put(vars, localVars, isProc)|
 	  pick(vars, localVars, isProc)|
 	  jump(vars, localVars, isProc)|
