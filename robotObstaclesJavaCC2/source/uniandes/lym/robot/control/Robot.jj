@@ -192,9 +192,10 @@ void varNum(Map<String, Integer > vars, Map<String, Integer > localVars, boolean
 	  if(vars.get(token.image) == null) {
 	    throw new Exception("Variable no asignada");
 	  }
+	  //return (vars.get(token.image));
 	}
 	}
-	| < NUM >
+	| < NUM > //{ return Integer.parseInt(token.image); }
 }
 void mov(Map<String, Integer > vars, Map<String, Integer > localVars, boolean isProc) throws Exception:
 	{
@@ -370,6 +371,7 @@ void mov(Map<String, Integer > vars, Map<String, Integer > localVars, boolean is
 	{
 	    procName=<VAR> {
 	      if (!procedures.containsKey(procName.image)) {
+	        System.out.println(procName.image);
 	        throw new Exception("Procedimiento no definido");
 	     }
 	  }
@@ -383,10 +385,10 @@ void mov(Map<String, Integer > vars, Map<String, Integer > localVars, boolean is
 	{
 	}
 	{
+	  
 	  (
-	    LOOKAHEAD(100)
-	    assignVar(vars, localVars, isProc)|
-	    procCall(procedures, vars, localVars, isProc)|
+	    LOOKAHEAD(2) assignVar(vars, localVars, isProc)|
+	    LOOKAHEAD(2) procCall(procedures, vars, localVars, isProc)|
 	  	completeCondition(vars, localVars, isProc)|
 	  	instruction(vars, localVars, isProc)
 	  	
@@ -408,16 +410,23 @@ void mov(Map<String, Integer > vars, Map<String, Integer > localVars, boolean is
 	  < FOR > varNum() < REPEAT > basicBlock()
 	}
 	*/
+
+	void completeBlockContent(Map<String, Integer> vars, Map<String, Integer> localVars, boolean isProc, Map<String, Integer> procedures) throws Exception :
+	{
+	}
+	{
+	    ( basicBlock(vars, localVars, isProc, procedures) 
+	    | completeLoop(vars, localVars, isProc, procedures) 
+	    | completeRepeat(vars, localVars, isProc, procedures) 
+	    )+
+	}
+
 	
 	void completeBlock(Map<String, Integer > vars, Map<String, Integer > localVars, boolean isProc, Map<String, Integer > procedures) throws Exception:
 	{
 	}
 	{
-	  "["(
-	    basicBlock(vars, localVars, isProc, procedures) |
-	    completeLoop(vars, localVars, isProc, procedures) |
-	    completeRepeat(vars, localVars, isProc, procedures)
-	  )+ "]"
+	  "[" completeBlockContent(vars, localVars, isProc, procedures) "]"
 	}
 	
 	
@@ -444,8 +453,9 @@ void mov(Map<String, Integer > vars, Map<String, Integer > localVars, boolean is
 	  Integer valActual;
 	}
 	{
-	  < PROC > procName=< VAR > { procedures.put(token.image, 0 ); } (":" < VAR >
+	  < PROC > procName=< VAR > { procedures.put(token.image, 0 ); }
 
+	  (":" < VAR >
 	  {	localVars.put(token.image, null);
 	    valActual = procedures.get(procName.image);
 	   procedures.replace(procName.image, valActual + 1); }
@@ -460,7 +470,7 @@ void mov(Map<String, Integer > vars, Map<String, Integer > localVars, boolean is
 	  Map<String, Integer > localVars = new HashMap< >();
 	}
 	{
-	  procHeading(procedures, localVars) "[" (decVar(localVars))? completeBlock(vars, localVars, true, procedures) "]"
+	  procHeading(procedures, localVars) "[" (decVar(localVars))? completeBlockContent(vars, localVars, true, procedures) "]"
 	}
 
 	/*
