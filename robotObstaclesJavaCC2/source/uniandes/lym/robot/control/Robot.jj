@@ -186,9 +186,10 @@ int one_line() throws Exception:
 		Map<String, Integer > vars = new HashMap< >();
   		Map<String, Integer > procedures = new HashMap< >();
  		Map<String, Integer > localVars = new HashMap< >();
+ 		Map<String, List<String > > procedureInstructions = new HashMap< >();
 	}
 	{
-	  (decVar(vars))? (procedure(vars, procedures) | completeBlock(vars, localVars, false, procedures)) + ";"
+	  (decVar(vars))? (procedure(vars, procedures, procedureInstructions) | completeBlock(vars, localVars, false, procedures)) + ";"
 
 	  {
 		    try {
@@ -206,7 +207,7 @@ int one_line() throws Exception:
 	  
   
 
-int varNum(Map<String, Integer > vars, Map<String, Integer > localVars, boolean isProc) throws Exception:
+String varNum(Map<String, Integer > vars, Map<String, Integer > localVars, boolean isProc) throws Exception:
 {
 }
 {
@@ -215,7 +216,7 @@ int varNum(Map<String, Integer > vars, Map<String, Integer > localVars, boolean 
 	  if (!vars.containsKey(token.image) && !localVars.containsKey(token.image)) {
 	    throw new Exception("Variable no declarada");
 	  }
-	  return 0;
+	  return token.image;
 	}
 	else {
 	  if(!vars.containsKey(token.image)) {
@@ -225,10 +226,10 @@ int varNum(Map<String, Integer > vars, Map<String, Integer > localVars, boolean 
 	    throw new Exception("Variable no asignada");
 	  }
 
-	  return vars.get(token.image);
+	  return String.toString(vars.get(token.image));
 	}
 	}
-	| < NUM > { return Integer.parseInt(token.image); }
+	| < NUM > { return token.image; }
 }
 void mov(Map<String, Integer > vars, Map<String, Integer > localVars, boolean isProc) throws Exception:
 	{
@@ -237,9 +238,10 @@ void mov(Map<String, Integer > vars, Map<String, Integer > localVars, boolean is
 	  Token dir = new Token();
 }
     {
-      < MOVE > x=varNum(vars, localVars, isProc) (action = < TOTHE > (dir = < D > |dir = < LR >) |action = < INDIR > dir = < O >)? "."
+      < MOVE > c=varNum(vars, localVars, isProc) (action = < TOTHE > (dir = < D > |dir = < LR >) |action = < INDIR > dir = < O >)? "."
       { if (action.kind == TOTHE) {
         if (dir.kind == D) {
+          int x = Integer.parseInt(c);
           for(int i = 0; i < x; i++) {
             if(dir.image.equals("#front")) { 
             	world.up();
@@ -288,7 +290,7 @@ void mov(Map<String, Integer > vars, Map<String, Integer > localVars, boolean is
             	} }
     		
     		else {
-    		  { while (!world.facingNorth()) {
+    		  { while (!world.facingWest()) {
             	  world.turnRight();
             	} }
     		}
@@ -300,24 +302,60 @@ void mov(Map<String, Integer > vars, Map<String, Integer > localVars, boolean is
 
 	void goTo(Map<String, Integer > vars, Map<String, Integer > localVars, boolean isProc) throws Exception:
 	{
+	  int x = 0;
+	  int y = 0;
 	}
 
 	{
-	  < GOTO > varNum(vars, localVars, isProc) <WITH > varNum(vars, localVars, isProc) "."
+	   < GOTO > x =varNum(vars, localVars, isProc)  <WITH > y =varNum(vars, localVars, isProc) "."
+	  {
+	    if (!isProc) { 
+	    world.setPostion(Integer.parseInt(x),Integer.parseInt(y)); }
+	  }
+	  
 	}
 
 	void turn () :
 	{
+	  Token dir = new Token();
 	}
 	{
-	  < TURN > (< DT > | < LR >)  "."
+	  < TURN > ( dir = < DT > | dir = < LR >)  "."
+	  { if (dir.kind == DT) { world.turnRight(); world.turnRight(); } 
+	   else {
+	     if (dir.image.equals("#right")) { world.turnRight(); }
+	   	else { world.turnRight(); world.turnRight();world.turnRight(); }
+	   	}
+	 }
 	}
 
 	void face ():
 	{
+	  Token dir = new Token();
 	}
 	{
-	  < FACE >< O > "."
+	  < FACE > dir = < O > "."
+	  { if(dir.image.equals("#north")) { 
+            	while (!world.facingNorth()) {
+            	  world.turnRight();
+            	}
+           }
+           else if (dir.image.equals("#south"))
+             { while (!world.facingSouth()) {
+            	  world.turnRight();
+            	}}
+    		
+    		else if (dir.image.equals("#east"))
+             { while (!world.facingEast()) {
+            	  world.turnRight();
+            	} }
+    		
+    		else {
+    		  while (!world.facingWest()) {
+            	  world.turnRight();
+            	} 
+    		}
+    	}
 	}
 
 	void put (Map<String, Integer > vars, Map<String, Integer > localVars, boolean isProc) throws Exception :
@@ -437,9 +475,10 @@ void mov(Map<String, Integer > vars, Map<String, Integer > localVars, boolean is
 	}
 	
 	// Asignación de variables: var := var_num.
-	void assignVar(Map<String, Integer > vars, Map<String, Integer > localVars, boolean isProc) throws Exception :
+	void assignVar(Map<String, Integer > vars, Map<String, Integer > localVars, boolean isProc, Map<String, List<String > > procedureInstructions, String procName) throws Exception :
 	{
 	    Token varName, value;
+	    String instruction = "";
 	}
 	{
 	    varName=<VAR> {
@@ -447,6 +486,7 @@ void mov(Map<String, Integer > vars, Map<String, Integer > localVars, boolean is
 	        if (!vars.containsKey(varName.image) && !localVars.containsKey(varName.image)) {
 	          throw new Exception("Variable no declarada");
 	        }
+	        { instruction += varName.image; }
 	     }
 	     else {
 	       if (!vars.containsKey(varName.image)) {
@@ -457,7 +497,12 @@ void mov(Map<String, Integer > vars, Map<String, Integer > localVars, boolean is
 	       
 	        ":=" value = < NUM >
 	        { if(!isProc) {
-	          vars.put(varName.image, Integer.parseInt(value.image)); }
+	          vars.put(varName.image, Integer.parseInt(value.image));
+	           instruction += ":=";
+	           instruction += value.image;
+	           instruction += ".";
+	           procedureInstructions.get(procName).add(instruction);
+	         }
 		      else {
 		          if (vars.containsKey(varName.image) && !localVars.containsKey(varName.image)) {
 		            vars.replace(varName.image, Integer.parseInt(value.image)); 
@@ -468,13 +513,15 @@ void mov(Map<String, Integer > vars, Map<String, Integer > localVars, boolean is
 	     	}
 	   } 
 	        "."
+	   
 	}
 	
-	// Llamada a procedimientos: var(:var_num(and:var_num)*)?.
-	void procCall(Map<String, Integer > procedures, Map<String, Integer > vars, Map<String, Integer > localVars, boolean isProc) throws Exception:
+	
+	void procCall(Map<String, Integer > procedures, Map<String, Integer > vars, Map<String, Integer > localVars, boolean isProc, Map<String, List<String >> procedureInstructions, String procName) throws Exception:
 	{
 	    Token procName, param;
 	    int contador = 0;
+	    String instruction = "";
 	}
 	{
 	    procName=<VAR> {
@@ -482,23 +529,29 @@ void mov(Map<String, Integer > vars, Map<String, Integer > localVars, boolean is
 	        System.out.println(procName.image);
 	        throw new Exception("Procedimiento no definido");
 	     }
+	     if(isProc) {instruction += procName.image; } 
 	  }
-	       ( ":" varNum(vars, localVars, isProc) { contador+=1; } ( "and:" varNum(vars, localVars, isProc){ contador+=1; } )* )? "."
+	       ( ":" 
+	       var = varNum(vars, localVars, isProc) { contador+=1;
+	       if(isProc) {instruction += ":" ; instruction += var; } }
+	       ( "and:" var=varNum(vars, localVars, isProc){ contador+=1; }
+	       { if(isProc) {instruction += "and:" ; instruction += var;  } } )* )? "."
+	       { if(isProc) {instruction += "."; procedureInstructions.get(procName).add(instruction); } }
 	       { if (contador != procedures.get(procName.image))
 	       { throw new Exception("Numero incorrecto de parametros para el procedimiento"); }
 	}
 	}
 
-	void basicBlock(Map<String, Integer > vars, Map<String, Integer > localVars, boolean isProc, Map<String, Integer > procedures ) throws Exception:
+	void basicBlock(Map<String, Integer > vars, Map<String, Integer > localVars, boolean isProc, Map<String, Integer > procedures, Map<String, List<String > > procedureInstructions, String procName) throws Exception:
 	{
 	}
 	{
 	  
 	  (
-	    LOOKAHEAD(2) assignVar(vars, localVars, isProc)|
-	    LOOKAHEAD(2) procCall(procedures, vars, localVars, isProc)|
-	  	completeCondition(vars, localVars, isProc)|
-	  	instruction(vars, localVars, isProc)
+	    LOOKAHEAD(2) assignVar(vars, localVars, isProc, procedureInstructions, procName)|
+	    LOOKAHEAD(2) procCall(procedures, vars, localVars, isProc, procedureInstructions, procName)|
+	  	completeCondition(vars, localVars, isProc, procedureInstructions)|
+	  	instruction(vars, localVars, isProc, procedureInstructions, procName)
 	  	
 	  )+
 	}
@@ -519,11 +572,11 @@ void mov(Map<String, Integer > vars, Map<String, Integer > localVars, boolean is
 	}
 	*/
 
-	void completeBlockContent(Map<String, Integer> vars, Map<String, Integer> localVars, boolean isProc, Map<String, Integer> procedures) throws Exception :
+	void completeBlockContent(Map<String, Integer> vars, Map<String, Integer> localVars, boolean isProc, Map<String, Integer> procedures, Map<String, String > procedureInstructions, String procName) throws Exception :
 	{
 	}
 	{
-	    ( basicBlock(vars, localVars, isProc, procedures) 
+	    ( basicBlock(vars, localVars, isProc, procedures, procedureInstructions, procName) 
 	    | completeLoop(vars, localVars, isProc, procedures) 
 	    | completeRepeat(vars, localVars, isProc, procedures) 
 	    )+
@@ -555,7 +608,7 @@ void mov(Map<String, Integer > vars, Map<String, Integer > localVars, boolean is
 
 
 	//Procedimientos
-	void procHeading(Map<String, Integer > procedures) :
+	String procHeading(Map<String, Integer > procedures) :
 	{
 	  Token procName;
 	  Integer valActual;
@@ -571,14 +624,18 @@ void mov(Map<String, Integer > vars, Map<String, Integer > localVars, boolean is
 	  {
 	    valActual = procedures.get(procName.image);
 	   procedures.replace(procName.image, valActual + 1); })* )?
+	  { return procName.image; }
 	}
 
-	void procedure(Map<String, Integer > vars, Map<String, Integer> procedures) throws Exception:
+	void procedure(Map<String, Integer > vars, Map<String, Integer> procedures, Map<String, String > procedureInstructions) throws Exception:
 	{
 	  Map<String, Integer > localVars = new HashMap< >();
 	}
 	{
-	  procHeading(procedures) "[" (decVar(localVars))? completeBlockContent(vars, localVars, true, procedures) "]"
+	  procName = procHeading(procedures) "[" (decVar(localVars))? completeBlockContent(vars, localVars, true, procedures, procedureInstructions, procName) "]"
+	  { List<String > procInstructionList = new ArrayList< >();
+	  	procedureInstructions.put(procName, procInstructionList);
+	}
 	}
 
 	/*
