@@ -365,7 +365,7 @@ void mov(Map<String, Integer > vars, Map<String, Integer > localVars, boolean is
 	void procCall(Map<String, Integer > procedures, Map<String, Integer > vars, Map<String, Integer > localVars, boolean isProc) throws Exception:
 	{
 	    Token procName, param;
-	    int contador;
+	    int contador = 0;
 	}
 	{
 	    procName=<VAR> {
@@ -416,7 +416,7 @@ void mov(Map<String, Integer > vars, Map<String, Integer > localVars, boolean is
 	  "["(
 	    basicBlock(vars, localVars, isProc, procedures) |
 	    completeLoop(vars, localVars, isProc, procedures) |
-	    completeRepeat()
+	    completeRepeat(vars, localVars, isProc, procedures)
 	  )+ "]"
 	}
 	
