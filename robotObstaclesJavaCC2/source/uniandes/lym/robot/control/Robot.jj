@@ -32,6 +32,7 @@ import java.io.*;
 import java.util.Vector;
 import java.util.LinkedList;
 import java.util.* ;
+import java.awt.Point;
 
 @SuppressWarnings("serial")
 public class Robot 
@@ -136,6 +137,9 @@ TOKEN :
   		| < DO: "do:" >
   		| < FOR : "for:" >
   		| < REPEAT : "repeat:" >
+  		| < IF: "if:" >
+  		| < THEN: "then:" >
+  		| < ELSE: "else:" >
 }
 
 TOKEN: /* constants*/
@@ -158,7 +162,7 @@ TOKEN :
 		| < VAR : <LETTERLOWER > (< LETTERLOWER >|< LETTERUPPER >|< NUM >)* >
         
 }
-
+/*
 int one_line() throws Exception:
 {
   Map<String, Integer > vars = new HashMap< >();
@@ -176,6 +180,7 @@ int one_line() throws Exception:
     return 1;
   }
 }
+*/
 
 //boolean command(uniandes.lym.robot.view.Console sistema) :
  	boolean  command(Console sistema) throws Exception:
@@ -187,9 +192,11 @@ int one_line() throws Exception:
   		Map<String, Integer > procedures = new HashMap< >();
  		Map<String, Integer > localVars = new HashMap< >();
  		Map<String, List<String > > procedureInstructions = new HashMap< >();
+ 		Map<String, List<String > > procParams= new HashMap< >();
+ 		
 	}
 	{
-	  (decVar(vars))? (procedure(vars, procedures, procedureInstructions) | completeBlock(vars, localVars, false, procedures)) + ";"
+	  (decVar(vars))? (procedure(vars, procedures, procedureInstructions, procParams) | completeBlock(vars, localVars, false, procedures, procedureInstructions, "", procParams)) + ";"
 
 	  {
 		    try {
@@ -226,22 +233,29 @@ String varNum(Map<String, Integer > vars, Map<String, Integer > localVars, boole
 	    throw new Exception("Variable no asignada");
 	  }
 
-	  return String.toString(vars.get(token.image));
+	  return Integer.toString(vars.get(token.image));
 	}
 	}
 	| < NUM > { return token.image; }
 }
-void mov(Map<String, Integer > vars, Map<String, Integer > localVars, boolean isProc) throws Exception:
+void mov(Map<String, Integer > vars, Map<String, Integer > localVars, boolean isProc, Map<String, List<String > > procedureInstructions, String procName) throws Exception:
 	{
-	  int x = 0;
+	  String c = "";
 	  Token action = new Token();
 	  Token dir = new Token();
+	  String instruction = "";
 }
     {
       < MOVE > c=varNum(vars, localVars, isProc) (action = < TOTHE > (dir = < D > |dir = < LR >) |action = < INDIR > dir = < O >)? "."
-      { if (action.kind == TOTHE) {
+      {	if (isProc) { instruction = "move:"+c+action.image +dir.image+".";
+       procedureInstructions.get(procName).add(instruction);
+       }
+      else {
+        
+        int x = Integer.parseInt(c);
+        if (action.kind == TOTHE) {
         if (dir.kind == D) {
-          int x = Integer.parseInt(c);
+          
           for(int i = 0; i < x; i++) {
             if(dir.image.equals("#front")) { 
             	world.up();
@@ -251,8 +265,10 @@ void mov(Map<String, Integer > vars, Map<String, Integer > localVars, boolean is
    		}
     	else {
     	  for(int i = 0; i< x; i++) {
+    	    
             if(dir.image.equals("#left")) { 
             	world.left();
+            	
            }
            else { world.right(); }
     		}
@@ -297,13 +313,15 @@ void mov(Map<String, Integer > vars, Map<String, Integer > localVars, boolean is
   }
 }
 }
+}
          
     
 
-	void goTo(Map<String, Integer > vars, Map<String, Integer > localVars, boolean isProc) throws Exception:
+	void goTo(Map<String, Integer > vars, Map<String, Integer > localVars, boolean isProc, Map<String, List<String > > procedureInstructions, String procName) throws Exception:
 	{
-	  int x = 0;
-	  int y = 0;
+	  String x = "";
+	  String y = "";
+	  String instruction = "";
 	}
 
 	{
@@ -311,31 +329,42 @@ void mov(Map<String, Integer > vars, Map<String, Integer > localVars, boolean is
 	  {
 	    if (!isProc) { 
 	    world.setPostion(Integer.parseInt(x),Integer.parseInt(y)); }
+	    else {
+	      instruction = "goto:" + x + "with:" + y + ".";
+	  }
+	      
 	  }
 	  
 	}
 
-	void turn () :
+	void turn (boolean isProc, Map<String, List<String > > procedureInstructions, String procName) :
 	{
 	  Token dir = new Token();
+	  String instruction = "";
 	}
 	{
 	  < TURN > ( dir = < DT > | dir = < LR >)  "."
-	  { if (dir.kind == DT) { world.turnRight(); world.turnRight(); } 
+	  {if (isProc) { instruction = "turn:" + dir.image +"."; procedureInstructions.get(procName).add(instruction); }
+	  else { 
+	    if (dir.kind == DT) { world.turnRight(); world.turnRight(); } 
 	   else {
 	     if (dir.image.equals("#right")) { world.turnRight(); }
 	   	else { world.turnRight(); world.turnRight();world.turnRight(); }
 	   	}
 	 }
 	}
+	}
 
-	void face ():
+	void face (boolean isProc, Map<String, List<String > > procedureInstructions, String procName):
 	{
 	  Token dir = new Token();
+	  String instruction = "";
 	}
 	{
 	  < FACE > dir = < O > "."
-	  { if(dir.image.equals("#north")) { 
+	  { if (isProc) { instruction = "face:"+dir.image +"."; procedureInstructions.get(procName).add(instruction); }
+	  else { 
+	     if(dir.image.equals("#north")) { 
             	while (!world.facingNorth()) {
             	  world.turnRight();
             	}
@@ -356,28 +385,192 @@ void mov(Map<String, Integer > vars, Map<String, Integer > localVars, boolean is
             	} 
     		}
     	}
+  	 }
 	}
 
-	void put (Map<String, Integer > vars, Map<String, Integer > localVars, boolean isProc) throws Exception :
+	void put (Map<String, Integer > vars, Map<String, Integer > localVars, boolean isProc, Map<String, List<String > > procedureInstructions, String procName) throws Exception, Error :
 	{
+	  String c = "";
+ 	  Token tipo = new Token();
+ 	  String instruction = "";
 	}
 	{
-	  < PUT > varNum(vars, localVars, isProc) <TYPE > <X > "."
+	  < PUT > c = varNum(vars, localVars, isProc)  <TYPE > tipo =<X > "." {
+	    if(isProc) { instruction = "put:"+c+"ofType:"+tipo.image+"."; procedureInstructions.get(procName).add(instruction); }
+	    else { 
+			  int x = Integer.parseInt(c);
+		 	  if (tipo.image.equals("#ballons")) {
+		 	   
+		 	  world.putBalloons(x);	    
+		 		
+		 	}
+		 	else {
+		 	  
+		 	  world.putChips(x);
+		 	 
+		 	}
+ 		}
 	}
+ }
+	
 
-	void pick (Map<String, Integer > vars, Map<String, Integer > localVars, boolean isProc) throws Exception:
+	void pick (Map<String, Integer > vars, Map<String, Integer > localVars, boolean isProc,Map<String, List<String > > procedureInstructions, String procName ) throws Exception:
 	{
+	  String c = "";
+ 	  Token tipo = new Token();
+ 	  String instruction = "";
 	}
 	{
-	  < PICK > varNum(vars, localVars, isProc) < TYPE > < X > "."
-	}
+	  < PICK > c = varNum(vars, localVars, isProc) < TYPE > tipo = < X > "." {
+	    if(isProc) { instruction = "pick:" +c +"ofType:" + tipo.image + "."; procedureInstructions.get(procName).add(instruction); }
+	    else {
+	      		int x = Integer.parseInt(c);
+		 	  if (tipo.image.equals("#ballons")) {
+		 	    
+		 	    world.grabBalloons(x);	    
+		 		
+		 	  }
+		 	    
+		 	  
+		 	 else {
+		 	  
+		 	  world.pickChips(x);
+		 	  
+		 	}
+		}
+ 	}
+ }
+	
 
-	void jump (Map<String, Integer > vars, Map<String, Integer > localVars, boolean isProc) throws Exception:
+
+	void jump (Map<String, Integer > vars, Map<String, Integer > localVars, boolean isProc, Map<String, List<String > > procedureInstructions, String procName) throws Exception:
 	{
+	  String c = "";
+	  Token dir = new Token();
+	  Token val = new Token();
+	  String instruction = "";
+	  
 	}
 	{
-	  < JUMP > varNum(vars, localVars, isProc) (< INDIR > < O >| < TOTHE > (< D > | < LR >) ) "."
-	}
+	  < JUMP > c = varNum(vars, localVars, isProc) (dir = < INDIR > val = < O >| dir = < TOTHE > (val = < D > | val = < LR >) ) "."
+	  {	if (isProc) { instruction = "jump:" + c + dir.image + val.image + "."; procedureInstructions.get(procName).add(instruction); }
+	  	else {
+	    int x = Integer.parseInt(c);
+	  
+
+	    if (dir.image.equals("inDir")) {
+
+	    for(int i = 0; i< x; i++) {
+            if(val.image.equals("#north")) { 
+            	world.up();
+           }
+           else if (val.image.equals("#south"))
+             { world.down(); }
+    		
+    		else if (val.image.equals("#east"))
+             { world.left(); }
+    		
+    		else 
+    		  { world.right(); }
+    		
+    		}
+    		if(dir.image.equals("#north")) { 
+            	while (!world.facingNorth()) {
+            	  world.turnRight();
+            	}
+           }
+           else if (dir.image.equals("#south"))
+             { while (!world.facingSouth()) {
+            	  world.turnRight();
+            	}}
+    		
+    		else if (dir.image.equals("#east"))
+             { while (!world.facingEast()) {
+            	  world.turnRight();
+            	} }
+    		
+    		else {
+    		  { while (!world.facingNorth()) {
+            	  world.turnRight();
+            	} }
+    		}
+	    }
+	    else {
+	        boolean initialFacingNorth = world.facingNorth();
+    		boolean initialFacingEast = world.facingEast();
+    		boolean initialFacingSouth = world.facingSouth();
+    		boolean initialFacingWest = world.facingWest();
+        if (val.image.equals("#front")) {
+            for (int i = 0; i < x; i++) {
+                if (initialFacingNorth) {
+                    world.up();
+                } else if (initialFacingSouth) {
+                    world.down();
+                } else if (initialFacingEast) {
+                    world.left();
+                } else if (initialFacingWest) {
+                    world.right();
+                }
+            }
+        } else if (val.image.equals("#back")) {
+            for (int i = 0; i < x; i++) {
+                if (initialFacingNorth) {
+                    world.down();
+                } else if (initialFacingSouth) {
+                    world.up();
+                } else if (initialFacingEast) {
+                    world.right();
+                } else if (initialFacingWest) {
+                    world.left();
+                }
+            }
+        } else if (val.image.equals("#left")) {
+            for (int i = 0; i < x; i++) {
+                if (initialFacingNorth) {
+                    world.left();
+                } else if (initialFacingEast) {
+                    world.down();
+                } else if (initialFacingSouth) {
+                    world.right();
+                } else if (initialFacingWest) {
+                    world.up();
+                }
+            }
+        } else if (val.image.equals("#right")) {
+            for (int i = 0; i < x; i++) {
+                if (initialFacingNorth) {
+                    world.right();
+                } else if (initialFacingEast) {
+                    world.up();
+                } else if (initialFacingSouth) {
+                    world.left();
+                } else if (initialFacingWest) {
+                    world.down();
+                }
+            }
+        }
+
+        if (initialFacingNorth) {
+            while (!world.facingNorth()) {
+                world.turnRight();
+            }
+        } else if (initialFacingSouth) {
+            while (!world.facingSouth()) {
+                world.turnRight();
+            }
+        } else if (initialFacingEast) {
+            while (!world.facingEast()) {
+                world.turnRight();
+            }
+        } else if (initialFacingWest) {
+            while (!world.facingWest()) {
+                world.turnRight();
+            }
+        }
+    }
+	    }
+	  }
+}
 
 	void nop ():
 	{
@@ -386,84 +579,371 @@ void mov(Map<String, Integer > vars, Map<String, Integer > localVars, boolean is
 	  < NOP >
 	}
 
-	void instruction (Map<String, Integer > vars, Map<String, Integer > localVars, boolean isProc) throws Exception :
+	void instruction (Map<String, Integer > vars, Map<String, Integer > localVars, boolean isProc, Map<String, List<String > > procedureInstructions, String procName) throws Exception :
 	{
 	}
 	{
-	  mov(vars, localVars, isProc) |
-	  goTo(vars, localVars, isProc)|
-	  turn()|
-	  face()|
+	  mov(vars, localVars, isProc, procedureInstructions, procName) |
+	  goTo(vars, localVars, isProc, procedureInstructions, procName)|
+	  turn(isProc, procedureInstructions, procName)|
+	  face(isProc, procedureInstructions, procName)|
 
 	  
-	  put(vars, localVars, isProc)|
-	  pick(vars, localVars, isProc)|
-	  jump(vars, localVars, isProc)|
+	  put(vars, localVars, isProc, procedureInstructions, procName)|
+	  pick(vars, localVars, isProc, procedureInstructions, procName)|
+	  jump(vars, localVars, isProc, procedureInstructions, procName)|
 	  nop()
 	}
 
-	void facing() :
+	boolean facing() :
 	{
+	  Token dir = new Token();
 	}
 	{
-	  < FACING > < O > "."
-	}
-
-	void canPut(Map<String, Integer > vars, Map<String, Integer > localVars, boolean isProc) throws Exception:
-	{
-	}
-	{
-	  < CANPUT > varNum(vars, localVars, isProc ) < TYPE > < X > "."
-	}
-
-	void canPick(Map<String, Integer > vars, Map<String, Integer > localVars, boolean isProc) throws Exception:
-	{
-	}
-	{
-	  < CANPICK > varNum(vars, localVars, isProc) < TYPE > < X > "."
+	  < FACING > dir = < O > "."
+	  { if(dir.image.equals("#north")) { return world.facingNorth(); }
+	  	else if(dir.image.equals("#south")) { return world.facingSouth(); }
+	  	else if(dir.image.equals("#east")) { return world.facingEast(); }
+	  	else {return world.facingWest(); } }
+	  	  
 	}
 
-	void canMove(Map<String, Integer > vars, Map<String, Integer > localVars, boolean isProc) throws Exception :
+	boolean canPut(Map<String, Integer > vars, Map<String, Integer > localVars, boolean isProc) throws Exception:
 	{
-	    Token varNum, direction;
+	  Token type = new Token();
+	  String c = "";
 	}
 	{
-	    <CANMOVE> varNum(vars, localVars, isProc) ( <INDIR> direction=<O> | <TOTHE> (< D > | < LR >)  ) "."
+	  < CANPUT > c =varNum(vars, localVars, isProc ) < TYPE > type = < X > "."
+	  { int x = Integer.parseInt(c);
+	    if(type.image.equals("#chips")) { 
+	    if(!world.chipExists() && world.getMyChips() >=x) { return true; } else { return false; } }
+	    else {
+	      if(world.getMyBalloons() >=x) { return true; } else { return false; }
+	    }
+	    }
+	}
+
+	boolean canPick(Map<String, Integer > vars, Map<String, Integer > localVars, boolean isProc) throws Exception:
+	{
+	  Token type = new Token();
+	  String c = "";
+	}
+	{
+	  < CANPICK > c = varNum(vars, localVars, isProc) < TYPE > < X > "."
+	  {int x = Integer.parseInt(c);
+	    if(type.image.equals("#chips")) { 
+	    if(world.chipExists() && x<2) { return true; } else { return false; } }
+	    else {
+	      if(world.countBalloons() >= x) { return true; } else { return false; }
+	    }
+	    }
+	}
+
+	boolean canMove(Map<String, Integer > vars, Map<String, Integer > localVars, boolean isProc) throws Exception :
+	{
+	    Token direction = new Token();
+	    Token action = new Token();
+	    String c = "";
+	}
+	{
+	    <CANMOVE> c= varNum(vars, localVars, isProc) ( action = <INDIR> direction=<O> |action = <TOTHE> (direction =< D > | direction=< LR >)  ) "."
+	    {
+	      int x = Integer.parseInt(c);
+	      Point originalPos = world.getPosition();
+	      int size = world.getN();
+	       if (action.kind == INDIR) {
+	      
+	      
+
+	      if(direction.image.equals("#north")) {
+	        int newY = (int) originalPos.getY() - x;
+	        if (newY <1) { return false; }
+	        else { Point newPos = new Point((int)originalPos.getX(), newY ); return !world.isBlocked(newPos); }
+	      }
+	      else if(direction.image.equals("#south")) {
+	        int newY = (int)originalPos.getY() + x;
+	        if (newY >size) { return false; }
+	        else { Point newPos = new Point((int)originalPos.getX(), newY ); return !world.isBlocked(newPos); }
+	      }
+	      else if(direction.image.equals("#west")) {
+	        int newX = (int)originalPos.getX() - x;
+	        if (newX <1) { return false; }
+	        else { Point newPos = new Point(newX, (int)originalPos.getY() ); return !world.isBlocked(newPos); }
+	      }
+	      else {
+	        int newX = (int)originalPos.getX() + x;
+	        if (newX >size ) { return false; }
+	        else { Point newPos = new Point(newX, (int)originalPos.getY() ); return !world.isBlocked(newPos); }
+	      }
+	    }
+	    else {
+
+	      if(world.facingNorth())
+	      {
+	        if(direction.image.equals("#front")) {
+	        int newY = (int)originalPos.getY() - x;
+	        if (newY <1) { return false; }
+	        else { Point newPos = new Point((int)originalPos.getX(), newY ); return !world.isBlocked(newPos); }
+	      }
+	      else if(direction.image.equals("#back")) {
+	        int newY = (int)originalPos.getY() + x;
+	        if (newY >size) { return false; }
+	        else { Point newPos = new Point((int)originalPos.getX(), newY ); return !world.isBlocked(newPos); }
+	      }
+	      else if(direction.image.equals("#left")) {
+	        int newX = (int)originalPos.getX() - x;
+	        if (newX <1) { return false; }
+	        else { Point newPos = new Point(newX, (int)originalPos.getY() ); return !world.isBlocked(newPos); }
+	      }
+	      else {
+	        int newX = (int)originalPos.getX() + x;
+	        if (newX >size ) { return false; }
+	        else { Point newPos = new Point(newX, (int)originalPos.getY() ); return !world.isBlocked(newPos); }
+	      }
+	    }
+	    else if(world.facingSouth())
+	      {
+	        if(direction.image.equals("#back")) {
+	        int newY = (int)originalPos.getY() - x;
+	        if (newY <1) { return false; }
+	        else { Point newPos = new Point((int)originalPos.getX(), newY ); return !world.isBlocked(newPos); }
+	      }
+	      else if(direction.image.equals("#front")) {
+	        int newY = (int)originalPos.getY() + x;
+	        if (newY >size) { return false; }
+	        else { Point newPos = new Point((int)originalPos.getX(), newY ); return !world.isBlocked(newPos); }
+	      }
+	      else if(direction.image.equals("#right")) {
+	        int newX = (int)originalPos.getX() - x;
+	        if (newX <1) { return false; }
+	        else { Point newPos = new Point(newX,(int) originalPos.getY() ); return !world.isBlocked(newPos); }
+	      }
+	      else {
+	        int newX = (int)originalPos.getX() + x;
+	        if (newX >size ) { return false; }
+	        else { Point newPos = new Point(newX, (int)originalPos.getY() ); return !world.isBlocked(newPos); }
+	      }
+	    }
+	    else if(world.facingWest())
+	      {
+	        if(direction.image.equals("#left")) {
+	        int newY = (int)originalPos.getY() - x;
+	        if (newY <1) { return false; }
+	        else { Point newPos = new Point((int)originalPos.getX(), newY ); return !world.isBlocked(newPos); }
+	      }
+	      else if(direction.image.equals("#right")) {
+	        int newY = (int)originalPos.getY() + x;
+	        if (newY >size) { return false; }
+	        else { Point newPos = new Point((int)originalPos.getX(), newY ); return !world.isBlocked(newPos); }
+	      }
+	      else if(direction.image.equals("#back")) {
+	        int newX = (int)originalPos.getX() - x;
+	        if (newX <1) { return false; }
+	        else { Point newPos = new Point(newX, (int)originalPos.getY() ); return !world.isBlocked(newPos); }
+	      }
+	      else {
+	        int newX = (int)originalPos.getX() + x;
+	        if (newX >size ) { return false; }
+	        else { Point newPos = new Point(newX, (int)originalPos.getY() ); return !world.isBlocked(newPos); }
+	      }
+	    }
+	    else 
+	      {
+	        if(direction.image.equals("#right")) {
+	        int newY = (int)originalPos.getY() - x;
+	        if (newY <1) { return false; }
+	        else { Point newPos = new Point((int)originalPos.getX(), newY ); return !world.isBlocked(newPos); }
+	      }
+	      else if(direction.image.equals("#left")) {
+	        int newY = (int)originalPos.getY() + x;
+	        if (newY >size) { return false; }
+	        else { Point newPos = new Point((int)originalPos.getX(), newY ); return !world.isBlocked(newPos); }
+	      }
+	      else if(direction.image.equals("#front")) {
+	        int newX = (int)originalPos.getX() - x;
+	        if (newX <1) { return false; }
+	        else { Point newPos = new Point(newX, (int)originalPos.getY() ); return !world.isBlocked(newPos); }
+	      }
+	      else {
+	        int newX = (int)originalPos.getX() + x;
+	        if (newX >size ) { return false; }
+	        else { Point newPos = new Point(newX, (int)originalPos.getY() ); return !world.isBlocked(newPos); }
+	      }
+	    }
+	        
+
+	    }
+	}     
 	}
 	
-	void canJump(Map<String, Integer > vars, Map<String, Integer > localVars, boolean isProc) throws Exception :
+	boolean canJump(Map<String, Integer > vars, Map<String, Integer > localVars, boolean isProc) throws Exception :
 	{
-	    Token varNum, direction;
+	    Token  direction=new Token();
+	    Token action = new Token();
+	    String c = "";
 	}
 	{
-	    <CANJUMP> varNum(vars, localVars, isProc) ( <INDIR> direction=<O> | <TOTHE> (< D > | < LR >)  ) "."
+	    <CANJUMP> c = varNum(vars, localVars, isProc) (action = <INDIR> direction=<O> | action =<TOTHE> (direction =< D > | direction =< LR >)  ) "."
+	    {
+	      int x = Integer.parseInt(c);
+	      Point originalPos = world.getPosition();
+	      int size = world.getN();
+	       if (action.kind == INDIR) {
+	         
+	      
+	      
+
+	      if(direction.image.equals("#north")) {
+	        int newY = (int)originalPos.getY() - x;
+	        if (newY <1) { return false; }
+	        else { Point newPos = new Point((int)originalPos.getX(), newY ); return !world.isBlocked(newPos); }
+	      }
+	      else if(direction.image.equals("#south")) {
+	        int newY = (int)originalPos.getY() + x;
+	        if (newY >size) { return false; }
+	        else { Point newPos = new Point((int)originalPos.getX(), newY ); return !world.isBlocked(newPos); }
+	      }
+	      else if(direction.image.equals("#west")) {
+	        int newX = (int)originalPos.getX() - x;
+	        if (newX <1) { return false; }
+	        else { Point newPos = new Point(newX,(int) originalPos.getY() ); return !world.isBlocked(newPos); }
+	      }
+	      else {
+	        int newX =(int) originalPos.getX() + x;
+	        if (newX >size ) { return false; }
+	        else { Point newPos = new Point(newX, (int)originalPos.getY() ); return !world.isBlocked(newPos); }
+	      }
+	    }
+	    else {
+
+	      if(world.facingNorth())
+	      {
+	        if(direction.image.equals("#front")) {
+	        int newY = (int)originalPos.getY() - x;
+	        if (newY <1) { return false; }
+	        else { Point newPos = new Point((int)originalPos.getX(), newY ); return !world.isBlocked(newPos); }
+	      }
+	      else if(direction.image.equals("#back")) {
+	        int newY = (int)originalPos.getY() + x;
+	        if (newY >size) { return false; }
+	        else { Point newPos = new Point((int)originalPos.getX(), newY ); return !world.isBlocked(newPos); }
+	      }
+	      else if(direction.image.equals("#left")) {
+	        int newX = (int)originalPos.getX() - x;
+	        if (newX <1) { return false; }
+	        else { Point newPos = new Point(newX, (int)originalPos.getY() ); return !world.isBlocked(newPos); }
+	      }
+	      else {
+	        int newX =(int) originalPos.getX() + x;
+	        if (newX >size ) { return false; }
+	        else { Point newPos = new Point(newX, (int)originalPos.getY() ); return !world.isBlocked(newPos); }
+	      }
+	    }
+	    else if(world.facingSouth())
+	      {
+	        if(direction.image.equals("#back")) {
+	        int newY = (int)originalPos.getY() - x;
+	        if (newY <1) { return false; }
+	        else { Point newPos = new Point((int)originalPos.getX(), newY ); return !world.isBlocked(newPos); }
+	      }
+	      else if(direction.image.equals("#front")) {
+	        int newY = (int)originalPos.getY() + x;
+	        if (newY >size) { return false; }
+	        else { Point newPos = new Point((int)originalPos.getX(), newY ); return !world.isBlocked(newPos); }
+	      }
+	      else if(direction.image.equals("#right")) {
+	        int newX = (int)originalPos.getX() - x;
+	        if (newX <1) { return false; }
+	        else { Point newPos = new Point(newX, (int)originalPos.getY() ); return !world.isBlocked(newPos); }
+	      }
+	      else {
+	        int newX = (int)originalPos.getX() + x;
+	        if (newX >size ) { return false; }
+	        else { Point newPos = new Point(newX, (int)originalPos.getY() ); return !world.isBlocked(newPos); }
+	      }
+	    }
+	    else if(world.facingWest())
+	      {
+	        if(direction.image.equals("#left")) {
+	        int newY = (int)originalPos.getY() - x;
+	        if (newY <1) { return false; }
+	        else { Point newPos = new Point((int)originalPos.getX(), newY ); return !world.isBlocked(newPos); }
+	      }
+	      else if(direction.image.equals("#right")) {
+	        int newY = (int)originalPos.getY() + x;
+	        if (newY >size) { return false; }
+	        else { Point newPos = new Point((int)originalPos.getX(), newY ); return !world.isBlocked(newPos); }
+	      }
+	      else if(direction.image.equals("#back")) {
+	        int newX = (int)originalPos.getX() - x;
+	        if (newX <1) { return false; }
+	        else { Point newPos = new Point(newX, (int)originalPos.getY() ); return !world.isBlocked(newPos); }
+	      }
+	      else {
+	        int newX = (int)originalPos.getX() + x;
+	        if (newX >size ) { return false; }
+	        else { Point newPos = new Point(newX, (int)originalPos.getY() ); return !world.isBlocked(newPos); }
+	      }
+	    }
+	    else 
+	      {
+	        if(direction.image.equals("#right")) {
+	        int newY =(int) originalPos.getY() - x;
+	        if (newY <1) { return false; }
+	        else { Point newPos = new Point((int)originalPos.getX(), newY ); return !world.isBlocked(newPos); }
+	      }
+	      else if(direction.image.equals("#left")) {
+	        int newY = (int)originalPos.getY() + x;
+	        if (newY >size) { return false; }
+	        else { Point newPos = new Point((int)originalPos.getX(), newY ); return !world.isBlocked(newPos); }
+	      }
+	      else if(direction.image.equals("#front")) {
+	        int newX = (int)originalPos.getX() - x;
+	        if (newX <1) { return false; }
+	        else { Point newPos = new Point(newX, (int)originalPos.getY() ); return !world.isBlocked(newPos); }
+	      }
+	      else {
+	        int newX = (int)originalPos.getX() + x;
+	        if (newX >size ) { return false; }
+	        else { Point newPos = new Point(newX,(int) originalPos.getY() ); return !world.isBlocked(newPos); }
+	      }
+	    }
+	        
+
+	    }
+	}     
 	}
 	
 	// Condición genérica
-	void initialCondition(Map<String, Integer > vars, Map<String, Integer > localVars, boolean isProc) throws Exception :
-	{}
+	boolean initialCondition(Map<String, Integer > vars, Map<String, Integer > localVars, boolean isProc) throws Exception :
+	{boolean resp;}
 	{
-	    facing() |
-	    canPut(vars, localVars, isProc) |
-	    canPick(vars, localVars, isProc) |
-	    canMove(vars, localVars, isProc) |
-	    canJump(vars, localVars, isProc) 
+	    resp =facing() |
+	    resp =canPut(vars, localVars, isProc) |
+	    resp =canPick(vars, localVars, isProc) |
+	    resp =canMove(vars, localVars, isProc) |
+	    resp =canJump(vars, localVars, isProc)
+	    { return resp; }
 	}
 	
 	// Definición de la negación de una condición
-	void not(Map<String, Integer > vars, Map<String, Integer > localVars, boolean isProc) throws Exception :
-	{}
+	boolean not(Map<String, Integer > vars, Map<String, Integer > localVars, boolean isProc) throws Exception :
 	{
-	    <NOT> initialCondition(vars, localVars, isProc) "."
+	  boolean resp;}
+	{
+	    <NOT> resp = initialCondition(vars, localVars, isProc) "." { return !resp; }
 	}
 
-	void completeCondition(Map<String, Integer > vars, Map<String, Integer > localVars, boolean isProc) throws Exception:
+	boolean completeCondition(Map<String, Integer > vars, Map<String, Integer > localVars, boolean isProc) throws Exception:
 	{
+	  boolean resp;
 	}
 
 	{
-	  initialCondition (vars, localVars, isProc) |
-	  not(vars, localVars, isProc)
+	  resp =initialCondition (vars, localVars, isProc) |
+	  resp =not(vars, localVars, isProc)
+	  { return resp; }
 	}
 
 	void decVar(Map<String, Integer > vars) throws Exception :
@@ -517,40 +997,85 @@ void mov(Map<String, Integer > vars, Map<String, Integer > localVars, boolean is
 	}
 	
 	
-	void procCall(Map<String, Integer > procedures, Map<String, Integer > vars, Map<String, Integer > localVars, boolean isProc, Map<String, List<String >> procedureInstructions, String procName) throws Exception:
+	void procCall(Map<String, Integer > procedures, Map<String, Integer > vars, Map<String, Integer > localVars, boolean isProc, Map<String, List<String >> procedureInstructions, String procName, Map<String, List<String >> procParams ) throws Exception:
 	{
-	    Token procName, param;
+	    Token newProcName, param;
 	    int contador = 0;
 	    String instruction = "";
+	    String var = "";
+	    List<Integer > args = new ArrayList< >();
 	}
 	{
-	    procName=<VAR> {
-	      if (!procedures.containsKey(procName.image)) {
-	        System.out.println(procName.image);
+	    newProcName=<VAR> {
+	      if (!procedures.containsKey(newProcName.image)) {
 	        throw new Exception("Procedimiento no definido");
 	     }
-	     if(isProc) {instruction += procName.image; } 
+	     if(isProc) {instruction += newProcName.image; } 
 	  }
 	       ( ":" 
-	       var = varNum(vars, localVars, isProc) { contador+=1;
-	       if(isProc) {instruction += ":" ; instruction += var; } }
-	       ( "and:" var=varNum(vars, localVars, isProc){ contador+=1; }
-	       { if(isProc) {instruction += "and:" ; instruction += var;  } } )* )? "."
+	       var = varNum(vars, localVars, isProc)
+	       { contador+=1;
+	       	if(isProc)
+	        	{instruction += ":" ; instruction += var; }
+	        else { args.add(Integer.parseInt(var)); }
+	      }
+	       ( "and:" var=varNum(vars, localVars, isProc)
+	       { contador+=1; }
+	       { if(isProc)
+	       	{instruction += "and:" ; instruction += var;  }
+	       	else { args.add(Integer.parseInt(var)); }}
+	       	)* )? "."
 	       { if(isProc) {instruction += "."; procedureInstructions.get(procName).add(instruction); } }
-	       { if (contador != procedures.get(procName.image))
-	       { throw new Exception("Numero incorrecto de parametros para el procedimiento"); }
-	}
-	}
 
-	void basicBlock(Map<String, Integer > vars, Map<String, Integer > localVars, boolean isProc, Map<String, Integer > procedures, Map<String, List<String > > procedureInstructions, String procName) throws Exception:
+	       { if (contador != procedures.get(newProcName.image))
+	       { throw new Exception("Numero incorrecto de parametros para el procedimiento"); }}
+	     	
+	      /*
+			{ if(!isProc) {
+			  List<String > params = procParams.get(newProcName.image);
+			  for (int i = 0; i< params.size(); i++) {
+			    vars.put(params.get(i), args.get(i));
+				}
+				
+			List<String > instructions = procedureInstructions.get(newProcName.image);
+			for(String line: instructions) {
+                StringReader reader = new StringReader(line);
+                ReInit(reader);
+                
+                completeBlockContent(vars, localVars, isProc, procedures, procedureInstructions, procName, procParams);
+                 
+			    for (int i = 0; i< params.size(); i++) {
+					    vars.remove(params.get(i));
+						} 
+			*/
+        	}
+                
+                
+            
+                
+              
+			
+		
+			  
+
+	void conditional(Map<String, Integer > vars, Map<String, Integer > localVars, boolean isProc, Map<String, Integer > procedures, Map<String, List<String > > procedureInstructions, String procName, Map<String, List<String >> procParams) throws Exception:
+	{
+	}
+	{ < IF > completeCondition(vars, localVars, isProc)
+	 <THEN > completeBlock(vars, localVars, isProc, procedures, procedureInstructions, procName, procParams)
+	  < ELSE >
+	completeBlock(vars, localVars, isProc, procedures, procedureInstructions, procName, procParams) }
+
+
+	void basicBlock(Map<String, Integer > vars, Map<String, Integer > localVars, boolean isProc, Map<String, Integer > procedures, Map<String, List<String > > procedureInstructions, String procName, Map<String, List<String >> procParams) throws Exception:
 	{
 	}
 	{
 	  
 	  (
 	    LOOKAHEAD(2) assignVar(vars, localVars, isProc, procedureInstructions, procName)|
-	    LOOKAHEAD(2) procCall(procedures, vars, localVars, isProc, procedureInstructions, procName)|
-	  	completeCondition(vars, localVars, isProc, procedureInstructions)|
+	    LOOKAHEAD(2) procCall(procedures, vars, localVars, isProc, procedureInstructions, procName, procParams)|
+	  	conditional(vars, localVars, isProc, procedures, procedureInstructions, procName, procParams)|
 	  	instruction(vars, localVars, isProc, procedureInstructions, procName)
 	  	
 	  )+
@@ -572,161 +1097,80 @@ void mov(Map<String, Integer > vars, Map<String, Integer > localVars, boolean is
 	}
 	*/
 
-	void completeBlockContent(Map<String, Integer> vars, Map<String, Integer> localVars, boolean isProc, Map<String, Integer> procedures, Map<String, String > procedureInstructions, String procName) throws Exception :
+	void completeBlockContent(Map<String, Integer> vars, Map<String, Integer> localVars, boolean isProc, Map<String, Integer> procedures, Map<String, List<String > > procedureInstructions, String procName, Map<String, List<String >> procParams) throws Exception :
 	{
 	}
-	{
-	    ( basicBlock(vars, localVars, isProc, procedures, procedureInstructions, procName) 
-	    | completeLoop(vars, localVars, isProc, procedures) 
-	    | completeRepeat(vars, localVars, isProc, procedures) 
+	{ 
+	    ( basicBlock(vars, localVars, isProc, procedures, procedureInstructions, procName, procParams) 
+	    | completeLoop(vars, localVars, isProc, procedures, procedureInstructions, procName, procParams) 
+	    | completeRepeat(vars, localVars, isProc, procedures, procedureInstructions, procName, procParams) 
 	    )+
 	}
 
 	
-	void completeBlock(Map<String, Integer > vars, Map<String, Integer > localVars, boolean isProc, Map<String, Integer > procedures) throws Exception:
+	void completeBlock(Map<String, Integer > vars, Map<String, Integer > localVars, boolean isProc, Map<String, Integer > procedures, Map<String, List<String > > procedureInstructions, String procName, Map<String, List<String >> procParams) throws Exception:
 	{
 	}
 	{
-	  "[" completeBlockContent(vars, localVars, isProc, procedures) "]"
-	}
-	
-	
-	void completeLoop(Map<String, Integer > vars, Map<String, Integer > localVars, boolean isProc, Map<String, Integer > procedures) throws Exception:
-	{
-	}
-	{
-	  < WHILE > completeCondition(vars, localVars, isProc) < DO > completeBlock(vars, localVars, isProc, procedures)
+	  "[" completeBlockContent(vars, localVars, isProc, procedures, procedureInstructions, procName, procParams) "]"
 	}
 	
 	
-	void completeRepeat(Map<String, Integer > vars, Map<String, Integer > localVars, boolean isProc, Map<String, Integer > procedures) throws Exception:
+	void completeLoop(Map<String, Integer > vars, Map<String, Integer > localVars, boolean isProc, Map<String, Integer > procedures, Map<String, List<String > > procedureInstructions, String procName, Map<String, List<String >> procParams) throws Exception:
 	{
 	}
 	{
-	  < FOR > varNum(vars, localVars, isProc) < REPEAT > completeBlock(vars, localVars, isProc, procedures)
+	  < WHILE > completeCondition(vars, localVars, isProc) < DO > completeBlock(vars, localVars, isProc, procedures, procedureInstructions, procName, procParams)
+	}
+	
+	
+	void completeRepeat(Map<String, Integer > vars, Map<String, Integer > localVars, boolean isProc, Map<String, Integer > procedures, Map<String, List<String > > procedureInstructions, String procName, Map<String, List<String >> procParams) throws Exception:
+	{
+	}
+	{
+	  < FOR > varNum(vars, localVars, isProc) < REPEAT > completeBlock(vars, localVars, isProc, procedures, procedureInstructions, procName, procParams)
 	}
 
 
 	//Procedimientos
-	String procHeading(Map<String, Integer > procedures) :
+	String procHeading(Map<String, Integer > procedures, Map<String, List<String > > procParams) :
 	{
 	  Token procName;
 	  Integer valActual;
 	}
 	{
-	  < PROC > procName=< VAR > { procedures.put(token.image, 0 ); }
+	  < PROC > procName=< VAR >
+	  { procedures.put(token.image, 0 );
+	  	List<String > params = new ArrayList< >();
+	  	procParams.put(procName.image, params); }
 
-	  (":" < VAR >
+	  (":" < VAR > 
 	  {	
 	    valActual = procedures.get(procName.image);
-	   procedures.replace(procName.image, valActual + 1); }
+	   procedures.replace(procName.image, valActual + 1);
+	   procParams.get(procName.image).add(token.image); }
 	  ("and:" < VAR >
 	  {
 	    valActual = procedures.get(procName.image);
-	   procedures.replace(procName.image, valActual + 1); })* )?
+	   procedures.replace(procName.image, valActual + 1);
+	   procParams.get(procName.image).add(token.image); })* )?
 	  { return procName.image; }
 	}
 
-	void procedure(Map<String, Integer > vars, Map<String, Integer> procedures, Map<String, String > procedureInstructions) throws Exception:
+	void procedure(Map<String, Integer > vars, Map<String, Integer> procedures, Map<String, List< String > > procedureInstructions, Map<String, List<String > > procParams) throws Exception:
 	{
 	  Map<String, Integer > localVars = new HashMap< >();
+	  String procName ="";
 	}
 	{
-	  procName = procHeading(procedures) "[" (decVar(localVars))? completeBlockContent(vars, localVars, true, procedures, procedureInstructions, procName) "]"
+	  procName = procHeading(procedures, procParams)
 	  { List<String > procInstructionList = new ArrayList< >();
+	  
 	  	procedureInstructions.put(procName, procInstructionList);
 	}
-	}
 
-	/*
-	//boolean command(uniandes.lym.robot.view.Console sistema) :
-	boolean command(Console sistema):
-	{	
-		
-		int x,y;
-		salida=new String();	
-	}
-
-	
-	{
-		(		  (
-		   <RIGHT> "(" ")" {world.turnRight();salida = "Command: Turnright";}
-		| 	<MOVE>  "(" x=num() ")" {world.moveForward(x,false);salida = "Command: Moveforward ";}  
-		| 	<HOP>  "(" x=num() ")" {world.moveForward(x,true);salida = "Command:Jumpforward ";}
-		| 	<GO>  "(" x=num() "," y=num()")" {world.setPostion(x,y);salida = "Command:GO ";}  
-		|  <PUT> "("  put() ")"					  			
-		|  <PICK> "(" get()  ")"	
-	    |  < POP > "(" x=num() ")" {world.popBalloons(x); salida = "Comando:  Pop";}
-		) ";" 
-
-		{
-		    try {
-	    			 Thread.sleep(900);
-	    	    } catch (InterruptedException e) {
-	    			        System.err.format("IOException: %s%n", e);
-	    		    }
-	    			 
-			sistema.printOutput(salida);
-			return true;
-		})+
-
-    	| <EOF> {return false;} 
-	}
-
-	
-	void put() :
-	{
-		int f=1;	
-	}
-	{
-		( <CHIPS>    "," f=num() {world.putChips(f); salida = "Command:  Put Chips"; })
-		|  	  ( <BALLOONS>   "," f=num() {world.putBalloons(f); salida = "Command:  Put Balloons";})	 
-
-	}
-
-	void get() :
-	{
-		int f=1;	
-	}
-	{
-		( <CHIPS>   "," f=num() {world.pickChips(f);salida = "Command:  Pick chips";})
-		|  	  ( <BALLOONS>   "," f=num() {world.grabBalloons(f);salida="Command:  Pick balloons";})	 
-
-	}
-	*/
-
-
-
-
-	   
-	  	
-	  	
+	   "[" (decVar(localVars))? completeBlockContent(vars, localVars, true, procedures, procedureInstructions, procName, procParams) "]"
 	  
-
-
-	/**
-	 * Unsigned decimal number
-	 * @return the corresponding value of the string
-	 * @error  corresponding value is too large
-	 */
-
-	int num() throws Error:
-	{	
-		int total=1;
-	}
-	{
-		<NUM>
-		{
-			try 
-			{
-				total = Integer.parseInt(token.image);
-			} 
-			catch (NumberFormatException ee) 
-			{
-				throw new Error("Number out of bounds: "+token.image+" !!");
-			}
-			return total;
-		}
 	}
 
 	
