@@ -378,9 +378,117 @@ void mov(Map<String, Integer > vars, Map<String, Integer > localVars, boolean is
 	}
 	{
 	  < JUMP > x = varNum(vars, localVars, isProc) (dir = < INDIR > val = < O >| dir = < TOTHE > val = (< D > | < LR >) ) "."
-	  { 
+	  { if dir.image.equals("inDir") {
+
+	    for(int i = 0; i< x; i++) {
+            if(val.image.equals("#north")) { 
+            	world.up();
+           }
+           else if (val.image.equals("#south"))
+             { world.down(); }
+    		
+    		else if (val.image.equals("#east"))
+             { world.left(); }
+    		
+    		else 
+    		  { world.right(); }
+    		
+    		}
+    		if(dir.image.equals("#north")) { 
+            	while (!world.facingNorth()) {
+            	  world.turnRight();
+            	}
+           }
+           else if (dir.image.equals("#south"))
+             { while (!world.facingSouth()) {
+            	  world.turnRight();
+            	}}
+    		
+    		else if (dir.image.equals("#east"))
+             { while (!world.facingEast()) {
+            	  world.turnRight();
+            	} }
+    		
+    		else {
+    		  { while (!world.facingNorth()) {
+            	  world.turnRight();
+            	} }
+    		}
+	    } else {
+	        boolean initialFacingNorth = world.facingNorth();
+    		boolean initialFacingEast = world.facingEast();
+    		boolean initialFacingSouth = world.facingSouth();
+    		boolean initialFacingWest = world.facingWest();
+        if (val.image.equals("#front")) {
+            for (int i = 0; i < x; i++) {
+                if (initialFacingNorth) {
+                    world.up();
+                } else if (initialFacingSouth) {
+                    world.down();
+                } else if (initialFacingEast) {
+                    world.left();
+                } else if (initialFacingWest) {
+                    world.right();
+                }
+            }
+        } else if (val.image.equals("#back")) {
+            for (int i = 0; i < x; i++) {
+                if (initialFacingNorth) {
+                    world.down();
+                } else if (initialFacingSouth) {
+                    world.up();
+                } else if (initialFacingEast) {
+                    world.right();
+                } else if (initialFacingWest) {
+                    world.left();
+                }
+            }
+        } else if (val.image.equals("#left")) {
+            for (int i = 0; i < x; i++) {
+                if (initialFacingNorth) {
+                    world.left();
+                } else if (initialFacingEast) {
+                    world.down();
+                } else if (initialFacingSouth) {
+                    world.right();
+                } else if (initialFacingWest) {
+                    world.up();
+                }
+            }
+        } else if (val.image.equals("#right")) {
+            for (int i = 0; i < x; i++) {
+                if (initialFacingNorth) {
+                    world.right();
+                } else if (initialFacingEast) {
+                    world.up();
+                } else if (initialFacingSouth) {
+                    world.left();
+                } else if (initialFacingWest) {
+                    world.down();
+                }
+            }
+        }
+
+        if (initialFacingNorth) {
+            while (!world.facingNorth()) {
+                world.turnRight();
+            }
+        } else if (initialFacingSouth) {
+            while (!world.facingSouth()) {
+                world.turnRight();
+            }
+        } else if (initialFacingEast) {
+            while (!world.facingEast()) {
+                world.turnRight();
+            }
+        } else if (initialFacingWest) {
+            while (!world.facingWest()) {
+                world.turnRight();
+            }
+        }
+    }
 	    }
-	}
+	  }
 
 	void nop ():
 	{
