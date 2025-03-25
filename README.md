@@ -1,6 +1,6 @@
 # Robot Control Parser
 
-Este proyecto contiene un parser para controlar un robot en un entorno simulado. El robot puede realizar diversas acciones como moverse, girar, recoger objetos, poner objetos y más, utilizando una sintaxis específica definida en la gramática de este parser. Dicha gramática se encuentra detallada a profundidad en el [enunciado del proyecto]()
+Este proyecto contiene un parser para controlar un robot en un entorno simulado. El robot puede realizar diversas acciones como moverse, girar, recoger objetos, poner objetos y más, utilizando una sintaxis específica definida en la gramática de este parser. Dicha gramática se encuentra detallada a profundidad en el [enunciado del proyecto](L&M-Project1.pdf)
 
 
 ## Descripción
